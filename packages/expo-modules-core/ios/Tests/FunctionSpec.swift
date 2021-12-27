@@ -154,7 +154,7 @@ class FunctionSpec: QuickSpec {
           expect(error).notTo(beNil())
           expect(error).to(beAKindOf(InvalidArgsNumberError.self))
           expect(error?.code).to(equal("ERR_INVALID_ARGS_NUMBER"))
-          expect(error?.description).to(equal(InvalidArgsNumberError(received: 2, expected: 1).description))
+          expect(error?.description).to(equal(InvalidArgsNumberError((received: 2, expected: 1)).description))
           done()
         }
       }

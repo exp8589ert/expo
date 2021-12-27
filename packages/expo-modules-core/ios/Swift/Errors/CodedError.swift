@@ -8,6 +8,59 @@ public protocol CodedError: Error {
   var description: String { get }
 }
 
+public protocol CausedError: Error, AnyObject {
+  var cause: Error? { get set }
+  var rootCause: Error? { get }
+  func causedBy(_ error: Error) -> Self
+}
+
+public extension CausedError {
+  var rootCause: Error? {
+    if let cause = cause as? CausedError {
+      return cause.rootCause
+    }
+    return cause
+  }
+
+  func causedBy(_ error: Error) -> Self {
+    cause = error
+    return self
+  }
+}
+
+public class BaseError: CodedError, CausedError, CustomStringConvertible {
+  public var name: String {
+    return String(describing: Self.self)
+  }
+
+  public var message: String {
+    "undefined message"
+  }
+
+  public var description: String {
+    let description = "\(name): \(message)"
+
+    if let cause = cause as? CodedError {
+      return "\(description)\n→ Caused by \(cause.description)"
+    } else if let cause = cause {
+      return "\(description)\n→ Caused by: \(cause.localizedDescription)"
+    }
+    return description
+  }
+
+  // MARK: CausedError
+
+  public var cause: Error?
+}
+
+public class GenericError<ArgsType>: BaseError {
+  public let args: ArgsType
+
+  public init(_ args: ArgsType) {
+    self.args = args
+  }
+}
+
 /**
  Extends the `CodedError` to make a fallback for `code` and `description`.
  */

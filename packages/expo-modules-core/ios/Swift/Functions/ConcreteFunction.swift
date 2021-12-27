@@ -43,7 +43,7 @@ public final class ConcreteFunction<Args, ReturnType>: AnyFunction {
       let tuple = try Conversions.toTuple(finalArgs) as! Args
       returnedValue = closure(tuple)
     } catch let error as CodedError {
-      promise.reject(error)
+      promise.reject(FunctionCallError(name).causedBy(error))
       return
     } catch let error {
       promise.reject(UnexpectedError(error))
@@ -90,21 +90,35 @@ public final class ConcreteFunction<Args, ReturnType>: AnyFunction {
 
   private func castArguments(_ args: [Any]) throws -> [Any] {
     if args.count != argumentsCount {
-      throw InvalidArgsNumberError(received: args.count, expected: argumentsCount)
+      throw InvalidArgsNumberError((received: args.count, expected: argumentsCount))
     }
     return try args.enumerated().map { (index, arg) in
       let expectedType = argumentType(atIndex: index)
 
-      // It's safe to unwrap since the arguments count matches.
-      return try expectedType!.cast(arg)
+      do {
+        // It's safe to unwrap since the arguments count matches.
+        return try expectedType!.cast(arg)
+      } catch {
+        throw ArgumentCastError((index: index, type: expectedType!)).causedBy(error)
+      }
     }
   }
 }
 
-internal struct InvalidArgsNumberError: CodedError {
-  let received: Int
-  let expected: Int
-  var description: String {
-    "Received \(received) arguments, but \(expected) was expected."
+internal class InvalidArgsNumberError: GenericError<(received: Int, expected: Int)> {
+  override var message: String {
+    "Received \(args.received) arguments, but \(args.expected) was expected."
+  }
+}
+
+internal class ArgumentCastError: GenericError<(index: Int, type: AnyArgumentType)> {
+  override var message: String {
+    "Argument at index \"\(args.index)\" couldn't be casted to type \"\(args.type.description)\"."
+  }
+}
+
+internal class FunctionCallError: GenericError<String> {
+  override var message: String {
+    "Calling function \"\(args)\" has been rejected."
   }
 }
